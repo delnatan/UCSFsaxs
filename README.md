@@ -13,10 +13,11 @@ Then, run the program via python:
 python main_saxsgui.py
 </pre>
 
-The algorithm implemented here is from:
-<p>
+The algorithms implemented here are directly taken from:<br>
+For Molecular Weight estimation:<p>
 Rambo, Robert P., and John A. Tainer. "Accurate assessment of mass, models and resolution by small-angle scattering." Nature 496.7446 (2013): 477-481. 
 <p>
+For Bayesian IFT<br>
 Hansen, Steen. "Bayesian estimation of hyperparameters for indirect Fourier transformation in small-angle scattering." Journal of applied crystallography 33.6 (2000): 1415-1421.
 
 
