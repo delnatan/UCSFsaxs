@@ -1,0 +1,2 @@
+#!/bin/sh
+exec pythonw2.7 /Users/delnatan/Codes/UCSFsaxs/env/lib/python2.7/site-packages/PyQt4/uic/pyuic.py ${1+"$@"}
