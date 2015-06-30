@@ -344,6 +344,9 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 
         Jreg,Ireg, Jreg_extrap, Ireg_extrap, q_full, r,pr,evi = iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,self.weighdata,self.data.smeared)
 
+        # assign full angular range to data
+        self.data.q_full = q_full
+        # calculate chi-square for fit
         chi = ((Iq-Jreg)**2/sd**2).mean()
 
         # assign solution to saxsdata

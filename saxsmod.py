@@ -81,7 +81,7 @@ class saxsdata:
         self.Jreg = None
         self.datarange = [0,len(self.q)]
         self.Nq_add = 0 # extrapolated scattering data length
-
+        self.q_full = None
 
     def manualGuinier(self,qi,qf):
         qmin_id = self.datarange[0]
