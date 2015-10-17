@@ -140,7 +140,7 @@ class saxsdata:
             sd = sd[qi:qf]
             q_full = self.q_full
             Jreg,Ireg = self.Jreg, self.Ireg
-            Nq_add = self.Nq_add
+            Nq_add = len(q_full) - len(q)
 
             gheader = """
            ####    G N O M   ---   Version 4.6                       ####\n
