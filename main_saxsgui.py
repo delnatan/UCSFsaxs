@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 # 06/10/2015 - added back Fortran module for making smeared transformation matrix
 #            - the P(r) saved from the window is integrated to 1 for easier overlay later
@@ -275,6 +276,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         try :
             self.data.datarange = [qmin_trunc, qmax_trunc]
             wrkq = self.data.q[qmin_trunc:qmax_trunc]
+            # determine Points to add 
             self.qmin_label.setText("{0:8.6f},(pi/q_min {1:6.2f})".format(wrkq.min(),pi/wrkq.min()))
             self.qmax_label.setText("{0:8.6f}".format(wrkq.max()))
             self.updateplot()

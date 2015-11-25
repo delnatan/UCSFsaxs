@@ -135,12 +135,12 @@ class saxsdata:
             q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
             if pr_error==0:
                 pr_error = zeros(len(self.r))
-            q = q[qi:qf]
+            q  = q[qi:qf]
             Iq = Iq[qi:qf]
             sd = sd[qi:qf]
             q_full = self.q_full
             Jreg,Ireg = self.Jreg, self.Ireg
-            Nq_add = self.Nq_add
+            Nq_add = len(q_full) - len(q)
 
             gheader = """
            ####    G N O M   ---   Version 4.6                       ####\n
@@ -179,6 +179,16 @@ class saxsdata:
             fout.close()
         else:   
             print "No solutions to be saved ... please solve the P(r) first.."
+
+    def save_results(self, filename):
+    	# things needed to save
+    	# r,pr is final P(r) solution
+    	# q,Iq,sd is experimental data (uncut), with data range (index used) for analysis in qi,qf
+    	q,Iq,sd,r,pr = self.q,self.Iq,self.sd,self.r,self.pr
+    	qi, qf = self.datarange
+    	Jreg,Ireg = self.Jreg, self.Ireg
+
+    	return False
 
 class beamprofile:
 
@@ -239,6 +249,7 @@ def trans(q, r, **kwargs):
     A = 4*pi* sin(qr)/qr * dr   
 
     if smear:
+    	# now this uses my fortran module 'transc' from 'trans_smear.f90'
         A = transc(q,r,y,Wy)
         # At = zeros((Nq,Nr))
         # for i in range(Nq):
