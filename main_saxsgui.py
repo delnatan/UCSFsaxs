@@ -18,6 +18,7 @@ from scipy.integrate import simps
 from numpy import exp, log, log10, array, loadtxt, linspace, zeros,\
                  unravel_index,pi, dot, sqrt, arange, sin
 from scipy.optimize import minimize
+from autorg_de import autorg
 
 class TextItem(pg.TextItem):
 
@@ -100,7 +101,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
     def __init__(self):
         self.mainWindow = QMainWindow()
         self.setupUi(self.mainWindow)
-        self.mainWindow.setWindowTitle("UCSF SAXS v0.5")
+        #self.mainWindow.setWindowTitle("UCSF SAXS v0.5")
         # set connections to GUI here
 
         # initialize GUI with plots
@@ -123,6 +124,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.mainWindow.connect(self.nskip2_spinbox, SIGNAL("valueChanged(int)"),self.adjustrange)
         self.mainWindow.connect(self.actionClose, SIGNAL("triggered()"), self.mainWindow.close)
         self.mainWindow.connect(self.actionSave_as_GNOM_file, SIGNAL("triggered()"),self.saveGNOMfile)
+        self.mainWindow.connect(self.autoguinier_button, SIGNAL("clicked()"),self.autoGuinier)
 
     def initializeparams(self):
         self.filename = None
@@ -414,10 +416,13 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         # x = q*Rg
         # y = (q*Rg)^2 * I(q)/I(0)
         xc_kratky = q_full * self.data.Rg 
-        yc_kratky = (xc_kratky)**2 * Ireg_extrap/Ireg_extrap[0]
+        yc_kratky = (xc_kratky)**2 * Jreg_extrap/Jreg_extrap[0]
+        # update the raw data with the Real Space Rg
+        x_kratky = q * self.data.Rg
+        y_kratky = (x_kratky)**2 * Iq/Jreg_extrap[0]
 
         self.kratkyplot.clear()
-        self.kratkyplot.plot(self.data.x_kratky, self.data.y_kratky, pen=self.redpen)
+        self.kratkyplot.plot(x_kratky, y_kratky, pen=self.redpen)
         self.kratkyplot.setLabel('bottom','q x Rg')
         self.kratkyplot.setLabel('left','(q*Rg)<sup>2</sup> x I(q)/I(0)')
         self.kratkyplot.addLine(x=1.73,pen=self.graydashedpen)
@@ -531,6 +536,51 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.logalpha_input.setText("{0:5.4f}".format(optim_alpha))
         self.dmax_input.setText("{0:5.2f}".format(optim_Dmax))
 
+    def autoGuinier(self):
+        Nmin   = int(self.guinierminpts.text())
+        qrgmin = float(self.qRgmin.text())
+        qrgmax = float(self.qRgmax.text())
+        range0,rangef = self.data.datarange
+
+        x = self.data.q[range0:rangef]
+        y = self.data.Iq[range0:rangef]
+
+        i0,opt_rg,opt_qrg,gi,gf = autorg(x,y,Nmin,qrgmax)
+        self.data.manualGuinier(gi-1,gf-1)
+
+        fit_x = self.data.guinierXY[0]
+        fit_y = self.data.guinierXY[0]*self.data.guinierpars[0] + self.data.guinierpars[1]
+        
+        datlb = self.data.datarange[0]
+        datub = self.data.datarange[1]
+
+        guinier_x = self.data.q[datlb:datub]**2
+        guinier_y = log(self.data.Iq[datlb:datub])
+
+        self.data.kratky()
+
+        self.guinierplot.clear()
+        self.kratkyplot.clear()
+
+        qRg_lower = self.data.guinierpts[0]
+        qRg_upper = self.data.guinierpts[1]
+        qRgfmt = "{0:5.2f} to {1:5.2f}".format(qRg_lower,qRg_upper)
+        
+        self.qRg_label.setText(qRgfmt)
+        self.guinierRg_label.setText("{0:8.2f}".format(self.data.guinierRg))
+        self.I0_label.setText("{0:8.4E}".format(self.data.guinierI0))
+
+        self.guinierplot.plot(x=guinier_x, y=guinier_y,pen=self.redpen)
+        self.guinierplot.setLabel('bottom','q<sup>2</sup>')
+        self.guinierplot.setLabel('left','log[I(q)]')
+        self.guinierplot.setXRange(0,fit_x.max()*1.4)
+        self.guinierplot.setYRange(fit_y.min()*0.9, fit_y.max()*1.1)
+
+        self.guinierplot.plot(x=fit_x,y=fit_y,pen=self.blackpen)
+        self.kratkyplot.plot(self.data.x_kratky, self.data.y_kratky, pen=self.redpen)
+        self.kratkyplot.setLabel('bottom','q x Rg')
+        self.kratkyplot.setLabel('left','(q*Rg)<sup>2</sup> x I(q)/I(0)')
+        self.kratkyplot.addLine(x=1.73,pen=self.graydashedpen)
 
     def manualGuinier(self):
 
@@ -576,7 +626,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 def main():
     app = QApplication(sys.argv)
     app.setOrganizationName("Agard Lab @ UCSF")
-    app.setApplicationName("SAXSgui v0.5")
+    #app.setApplicationName("SAXSgui v0.5")
     form = saxsgui_mainwindow()
     form.mainWindow.show()
     form.mainWindow.raise_()

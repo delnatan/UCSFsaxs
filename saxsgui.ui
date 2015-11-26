@@ -26,7 +26,7 @@
    <enum>Qt::StrongFocus</enum>
   </property>
   <property name="windowTitle">
-   <string>UCSFsaxs v0.4a</string>
+   <string>UCSFsaxs v0.6</string>
   </property>
   <property name="windowOpacity">
    <double>1.000000000000000</double>
@@ -246,7 +246,7 @@
      </widget>
      <widget class="QGroupBox" name="groupBox_4">
       <property name="enabled">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="geometry">
        <rect>
@@ -349,39 +349,37 @@
         <string>Min. points</string>
        </property>
       </widget>
-      <widget class="QLabel" name="label_24">
+      <widget class="QPushButton" name="autoguinier_button">
        <property name="geometry">
         <rect>
-         <x>185</x>
-         <y>60</y>
-         <width>151</width>
-         <height>16</height>
+         <x>210</x>
+         <y>55</y>
+         <width>91</width>
+         <height>26</height>
         </rect>
        </property>
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+       <property name="styleSheet">
+        <string notr="true">background-color: #F1BF29; font-size: 12px; color: green;</string>
        </property>
        <property name="text">
-        <string>Temporarily broken... sorry :(</string>
+        <string>Do it (Auto)!</string>
        </property>
       </widget>
      </widget>
      <widget class="QPushButton" name="runprimaryanalysis">
       <property name="geometry">
        <rect>
-        <x>690</x>
-        <y>440</y>
-        <width>106</width>
-        <height>51</height>
+        <x>580</x>
+        <y>435</y>
+        <width>111</width>
+        <height>26</height>
        </rect>
       </property>
       <property name="styleSheet">
-       <string notr="true">background-color: #F1BF29; font-size: 20px; color: blue;</string>
+       <string notr="true">background-color: #F1BF29; font-size: 12px; color: blue;</string>
       </property>
       <property name="text">
-       <string>Do it!</string>
+       <string>Do it (Manual)!</string>
       </property>
      </widget>
      <widget class="QSpinBox" name="lb_guinier_spinbox">
@@ -830,7 +828,7 @@
         <number>3</number>
        </property>
        <property name="maximum">
-        <double>1000.000000000000000</double>
+        <double>9999.000000000000000</double>
        </property>
       </widget>
       <widget class="QDoubleSpinBox" name="maxdmax">
@@ -846,7 +844,7 @@
         <number>3</number>
        </property>
        <property name="maximum">
-        <double>1000.000000000000000</double>
+        <double>9999.000000000000000</double>
        </property>
       </widget>
      </widget>

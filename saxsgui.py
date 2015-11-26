@@ -2,8 +2,7 @@
 
 # Form implementation generated from reading ui file 'saxsgui.ui'
 #
-# Created: Sat Apr  4 23:56:59 2015
-#      by: PyQt4 UI code generator 4.11.3
+# Created by: PyQt4 UI code generator 4.11.4
 #
 # WARNING! All changes made in this file will be lost!
 
@@ -99,7 +98,7 @@ class Ui_SAXSgui(object):
         self.primaryanalysis_view.setGeometry(QtCore.QRect(20, 10, 781, 401))
         self.primaryanalysis_view.setObjectName(_fromUtf8("primaryanalysis_view"))
         self.groupBox_4 = QtGui.QGroupBox(self.guinierkratky_tab)
-        self.groupBox_4.setEnabled(False)
+        self.groupBox_4.setEnabled(True)
         self.groupBox_4.setGeometry(QtCore.QRect(20, 410, 341, 91))
         self.groupBox_4.setObjectName(_fromUtf8("groupBox_4"))
         self.qRgmin = QtGui.QDoubleSpinBox(self.groupBox_4)
@@ -126,15 +125,13 @@ class Ui_SAXSgui(object):
         self.label_18 = QtGui.QLabel(self.groupBox_4)
         self.label_18.setGeometry(QtCore.QRect(250, 30, 71, 16))
         self.label_18.setObjectName(_fromUtf8("label_18"))
-        self.label_24 = QtGui.QLabel(self.groupBox_4)
-        self.label_24.setGeometry(QtCore.QRect(185, 60, 151, 16))
-        font = QtGui.QFont()
-        font.setPointSize(10)
-        self.label_24.setFont(font)
-        self.label_24.setObjectName(_fromUtf8("label_24"))
+        self.autoguinier_button = QtGui.QPushButton(self.groupBox_4)
+        self.autoguinier_button.setGeometry(QtCore.QRect(210, 55, 91, 26))
+        self.autoguinier_button.setStyleSheet(_fromUtf8("background-color: #F1BF29; font-size: 12px; color: green;"))
+        self.autoguinier_button.setObjectName(_fromUtf8("autoguinier_button"))
         self.runprimaryanalysis = QtGui.QPushButton(self.guinierkratky_tab)
-        self.runprimaryanalysis.setGeometry(QtCore.QRect(690, 440, 106, 51))
-        self.runprimaryanalysis.setStyleSheet(_fromUtf8("background-color: #F1BF29; font-size: 20px; color: blue;"))
+        self.runprimaryanalysis.setGeometry(QtCore.QRect(580, 435, 111, 26))
+        self.runprimaryanalysis.setStyleSheet(_fromUtf8("background-color: #F1BF29; font-size: 12px; color: blue;"))
         self.runprimaryanalysis.setObjectName(_fromUtf8("runprimaryanalysis"))
         self.lb_guinier_spinbox = QtGui.QSpinBox(self.guinierkratky_tab)
         self.lb_guinier_spinbox.setGeometry(QtCore.QRect(410, 435, 57, 24))
@@ -341,7 +338,7 @@ class Ui_SAXSgui(object):
         QtCore.QMetaObject.connectSlotsByName(SAXSgui)
 
     def retranslateUi(self, SAXSgui):
-        SAXSgui.setWindowTitle(_translate("SAXSgui", "UCSFsaxs v0.4a", None))
+        SAXSgui.setWindowTitle(_translate("SAXSgui", "UCSFsaxs v0.6", None))
         self.checkLogY.setText(_translate("SAXSgui", "Log-scale Y-axis", None))
         self.checkLogX.setText(_translate("SAXSgui", "Log-scale X-axis", None))
         self.label_8.setText(_translate("SAXSgui", "Beam Profile", None))
@@ -357,8 +354,8 @@ class Ui_SAXSgui(object):
         self.label_17.setText(_translate("SAXSgui", "qRg_max", None))
         self.guinierminpts.setText(_translate("SAXSgui", "10", None))
         self.label_18.setText(_translate("SAXSgui", "Min. points", None))
-        self.label_24.setText(_translate("SAXSgui", "Temporarily broken... sorry :(", None))
-        self.runprimaryanalysis.setText(_translate("SAXSgui", "Do it!", None))
+        self.autoguinier_button.setText(_translate("SAXSgui", "Do it (Auto)!", None))
+        self.runprimaryanalysis.setText(_translate("SAXSgui", "Do it (Manual)!", None))
         self.label_6.setText(_translate("SAXSgui", "to", None))
         self.label_7.setText(_translate("SAXSgui", "Fit", None))
         self.label_21.setText(_translate("SAXSgui", "current qRg : ", None))
