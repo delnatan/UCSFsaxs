@@ -36,7 +36,7 @@ class saxsdata:
         dat = open(filename,"rt")
         raw = dat.readlines()
         ext = filename[-3:].lower()
-        
+	raw = [d for d in raw if not d.startswith("#")] # get rid of comment lines        
         if ext=="dat":
             try: #default format for reading data (used in beamlines, standard 3-column)
                 self.q  = array([float(d.split()[0]) for d in raw if len(d.split())>1])

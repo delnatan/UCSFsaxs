@@ -42,7 +42,7 @@ subroutine autorg(q,y,Nmin,qRgmax,Npts,I0,opt_Rg,opt_qRg,gi,gf)
     gf = opt_ii + opt_block
 
     write(*,101) opt_ii, opt_ii+opt_block, opt_qRg, opt_Rg
-101 format('Rg (',i3,' - ',i3,')',1x,' qRg=',f5.3,', Rg=',f5.3)
+101 format('Rg (',i3,' - ',i3,')',1x,' qRg=',f6.3,', Rg=',f8.3)
 
 end subroutine autorg
 
