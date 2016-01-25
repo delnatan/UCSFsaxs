@@ -1,6 +1,10 @@
 from PyQt4 import QtGui
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+<<<<<<< Updated upstream
 from matplotlib import __version__
+=======
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+>>>>>>> Stashed changes
 from matplotlib.figure import Figure
 truncv = __version__[0:3]
 if truncv=='1.5':
