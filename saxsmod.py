@@ -35,6 +35,7 @@ class saxsdata:
         self.filename = filename
         dat = open(filename,"rt")
         raw = dat.readlines()
+	# for reading in FoXS-generated curves
         raw = [d for d in raw if not d.startswith("#")] # skip comment lines
         ext = filename[-3:].lower()
         
