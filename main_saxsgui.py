@@ -541,21 +541,23 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 
         optim_alpha = res.x[0]
         optim_Dmax  = res.x[1]
-        # Max Dmax is set to be 1.2 the optimum
-        Dmax_set = optim_Dmax * 1.2
-        dr = 1.25 # delta r 
-        Nr = int(ceil(Dmax_set / dr))
+
         # fill forms in "Real Space" Tab
         self.logalpha_input.setText("{0:5.4f}".format(optim_alpha))
         self.dmax_input.setText("{0:5.2f}".format(optim_Dmax))
 
         # run N calculations 
         Ncalc = int(self.Ncalcerror_input.text())
+        ferror= float(self.Ncalcerror_input_2.text()) / 100.0
+        # Max Dmax is set to be 1.2 the optimum
+        Dmax_set = optim_Dmax * (1 + ferror)
+        dr = 1.25 # delta r 
+        Nr = int(ceil(Dmax_set / dr))
         print "Computing Error estimates by Monte Carlo integration of %d ..." % (Ncalc)
         
         # generate random spacing for both optim_alpha & optim_Dmax
-        alpha_list = optim_alpha + randn(Ncalc)*0.1*optim_alpha
-        Dmax_list  = optim_Dmax  + randn(Ncalc)*0.1*optim_Dmax
+        alpha_list = optim_alpha + randn(Ncalc)*ferror*optim_alpha
+        Dmax_list  = optim_Dmax  + randn(Ncalc)*ferror*optim_Dmax
         # pre-allocate P(r) matrix, right now max is 500 Angstrom
         r_final = arange(0,Dmax_set,dr)
         Prs= zeros((Ncalc,Nr))
@@ -587,17 +589,24 @@ class saxsgui_mainwindow(Ui_SAXSgui):
             Pr_error[n,:] = sqrt((Prs[n,:]-pr_final)**2)
             jreg_error[n,:] = sqrt((jregs[n,:]-jq_final)**2)
             ireg_error[n,:] = sqrt((iregs[n,:]-iq_final)**2)
+        
+
         # plot them back on GUI
         pr_sd = relevi.dot(Pr_error)
         jq_sd = relevi.dot(jreg_error)
         iq_sd = relevi.dot(ireg_error)
+
+        # store data to SAXS object
+        self.data.r_final = r_final
+        self.data.pr_final= pr_final
+        self.data.pr_error= 3*pr_sd
+        # plot data 
         # set errorbar for each point
         self.prplot.clear()
         self.pr_errorbar = ErrorBarItem(x=r_final,y=pr_final,height=3*pr_sd,beam=0,pen={'color':'#a9a9a9','width':2})
         self.prplot.addItem(self.pr_errorbar)
         self.prplot.plot(r_final,pr_final,pen=self.redpen)
-        # plot data 
-
+        
         # overlay plot onto grid search
         self.biftgridView.canvas.ax.plot(Dmax_list,alpha_list,'r.')        
         self.biftgridView.canvas.draw()

@@ -77,6 +77,8 @@ class saxsdata:
         self.Rg = 0 # Real Space
         self.r = 0
         self.pr = 0
+        self.r_final = 0
+        self.pr_final = 0
         self.pr_error = 0
         self.guinierI0 = None
         self.guinierRg = None
@@ -135,8 +137,11 @@ class saxsdata:
 
         if self.solved:
             fout = open("%s_gnom.out" % savefilename,'wt')
-            q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
-            if pr_error==0:
+            if (len(self.r_final)>1 and len(self.pr_final)>1):
+                q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r_final,self.pr_final,self.pr_error
+            else:
+                q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
+            if (len(pr_error)==1):
                 pr_error = zeros(len(self.r))
             q  = q[qi:qf]
             Iq = Iq[qi:qf]
