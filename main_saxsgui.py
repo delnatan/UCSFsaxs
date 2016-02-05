@@ -13,10 +13,11 @@ import os
 import time
 from saxsgui import Ui_SAXSgui
 import pyqtgraph as pg
-from saxsmod import saxsdata, beamprofile, fitline, iftv2, grideval
+from saxsmod import saxsdata, beamprofile, fitline, iftv2,iftv3,ift_fixdr,grideval
 from scipy.integrate import simps
 from numpy import exp, log, log10, array, loadtxt, linspace, zeros,\
-                 unravel_index,pi, dot, sqrt, arange, sin
+                 unravel_index,pi, dot, sqrt, arange, sin, ceil, diff,append
+from numpy.random import randn
 from scipy.optimize import minimize
 from autorg_de import autorg
 
@@ -186,8 +187,9 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.rawplot.setLogMode(x=xlog,y=ylog)
 
     def openfile(self):
-        cwd = (os.path.dirname(self.filename)\
-                if self.filename is not None else self.cwd)
+        # cwd = (os.path.dirname(self.filename)\
+        #         if self.filename is not None else self.cwd)
+        cwd = os.path.expanduser('~')
         formats = (["*.{0}".format(unicode(formats).lower())\
                 for formats in self.supportedFormats])
         fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
@@ -511,6 +513,13 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         q  = q[qmin_id:qmax_id]
         Iq = Iq[qmin_id:qmax_id]
         sd = sd[qmin_id:qmax_id]
+    
+        if self.data.q_full is None:
+            dq = diff(q).mean()
+            q_extra = arange(0,q.min(),dq)
+            q_full  = append(q_extra, q)
+        else:
+            q_full = self.data.q_full
 
         smeared = self.smeared.checkState()
 
@@ -522,7 +531,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         else:
             y = None
             Wy= None
-            
+
         def objective(p0,q,Iq,sd,y,Wy,Nr,weighted):
             j1,j2,j3,j4,j5,j6,j7,evi = iftv2(exp(p0[0]),p0[1],q,Iq,sd,Nr,y,Wy,weighted,smeared)
             return -evi
@@ -532,9 +541,66 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 
         optim_alpha = res.x[0]
         optim_Dmax  = res.x[1]
-
+        # Max Dmax is set to be 1.2 the optimum
+        Dmax_set = optim_Dmax * 1.2
+        dr = 1.25 # delta r 
+        Nr = int(ceil(Dmax_set / dr))
+        # fill forms in "Real Space" Tab
         self.logalpha_input.setText("{0:5.4f}".format(optim_alpha))
         self.dmax_input.setText("{0:5.2f}".format(optim_Dmax))
+
+        # run N calculations 
+        Ncalc = int(self.Ncalcerror_input.text())
+        print "Computing Error estimates by Monte Carlo integration of %d ..." % (Ncalc)
+        
+        # generate random spacing for both optim_alpha & optim_Dmax
+        alpha_list = optim_alpha + randn(Ncalc)*0.1*optim_alpha
+        Dmax_list  = optim_Dmax  + randn(Ncalc)*0.1*optim_Dmax
+        # pre-allocate P(r) matrix, right now max is 500 Angstrom
+        r_final = arange(0,Dmax_set,dr)
+        Prs= zeros((Ncalc,Nr))
+        Pr_error = zeros((Ncalc,Nr))
+        evilist = zeros(Ncalc)
+        jregs = zeros((Ncalc,Iq.size))
+        jreg_error = zeros((Ncalc,Iq.size))
+        iregs = zeros((Ncalc,q_full.size))
+        ireg_error = zeros((Ncalc,q_full.size))
+        
+        for n in range(Ncalc):
+            jreg,ireg,jreg_extrap,ireg_extrap,q_full,r,pr,evidence=\
+            ift_fixdr(exp(alpha_list[n]),Dmax_list[n],q,Iq,sd,y,Wy,self.weighdata,smeared)
+
+            Nr = len(pr)
+            Prs[n,0:Nr] = pr
+            evilist[n] = evidence
+            jregs[n,:] = jreg 
+            iregs[n,:] = ireg_extrap
+
+        # integrate posterior probabilities
+        evilist = exp(evilist)
+        relevi  = evilist/evilist.sum()
+        pr_final= relevi.dot(Prs)
+        jq_final= relevi.dot(jregs)
+        iq_final= relevi.dot(iregs)
+        # compute standard deviation
+        for n in range(Ncalc):
+            Pr_error[n,:] = sqrt((Prs[n,:]-pr_final)**2)
+            jreg_error[n,:] = sqrt((jregs[n,:]-jq_final)**2)
+            ireg_error[n,:] = sqrt((iregs[n,:]-iq_final)**2)
+        # plot them back on GUI
+        pr_sd = relevi.dot(Pr_error)
+        jq_sd = relevi.dot(jreg_error)
+        iq_sd = relevi.dot(ireg_error)
+        # set errorbar for each point
+        self.prplot.clear()
+        self.pr_errorbar = ErrorBarItem(x=r_final,y=pr_final,height=3*pr_sd,beam=0,pen={'color':'#a9a9a9','width':2})
+        self.prplot.addItem(self.pr_errorbar)
+        self.prplot.plot(r_final,pr_final,pen=self.redpen)
+        # plot data 
+
+        # overlay plot onto grid search
+        self.biftgridView.canvas.ax.plot(Dmax_list,alpha_list,'r.')        
+        self.biftgridView.canvas.draw()
 
     def autoGuinier(self):
         Nmin   = int(self.guinierminpts.text())
