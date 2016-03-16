@@ -1,7 +1,7 @@
 # UCSFsaxs
 GUI for SAXS analysis, with smearing correction for line-collimated beam.
 
-This Python program uses PyQt4, Numpy, Scipy, Matplotlib and Pyqtgraph (which is included here in a folder).
+This Python program uses PyQt4, Numpy, Scipy, Matplotlib and Pyqtgraph (which is included here in a folder. I added support to display error bars in log-scale because as of this time, Pyqtgraph doesn't support it).
 It also uses a couple routines written in Fortran90 to speed up the smearing matrix calculation and automatic determination of most linear region for Guinier analysis. You need to compile 'trans_smear.f90' & 'autorg_de.f90' using f2py. If you used pip to install numpy you should have it.
 <pre>
 f2py -c trans_smear.f90 -m trans_smear
