@@ -7,7 +7,7 @@ It also uses a couple routines written in Fortran90 to speed up the smearing mat
 f2py -c trans_smear.f90 -m trans_smear
 f2py -c autorg_de.f90 -m autorg_de
 </pre>
-And you should have 'trans_smear.so' to import into Python.
+And you should have 'trans_smear.so' and 'autorg_de.so' to import into Python.
 
 Then, run the program via python:
 <pre>
