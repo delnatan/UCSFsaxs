@@ -189,7 +189,11 @@ class saxsgui_mainwindow(Ui_SAXSgui):
     def openfile(self):
         # cwd = (os.path.dirname(self.filename)\
         #         if self.filename is not None else self.cwd)
-        cwd = os.path.expanduser('~')
+        if self.filename is not None:
+            cwd = os.path.dirname(self.filename)
+        else:
+            cwd = os.path.expanduser('~')
+
         formats = (["*.{0}".format(unicode(formats).lower())\
                 for formats in self.supportedFormats])
         fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
@@ -202,8 +206,11 @@ class saxsgui_mainwindow(Ui_SAXSgui):
             self.loadfile(fname)
 
     def openbeamfile(self):
-        cwd = (os.path.dirname(self.beamname)\
-                if self.beamname is not None else self.cwd)
+        if self.filename is not None:
+            cwd = os.path.dirname(self.filename)
+        else:
+            cwd = (os.path.dirname(self.beamname)\
+                    if self.beamname is not None else self.cwd)
         formats = (["*.{0}".format(unicode(formats).lower())\
                 for formats in self.supportedFormats])
         fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
@@ -482,7 +489,8 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         sd = sd[qmin_id:qmax_id]
 
         self.statusbar.showMessage("Calculating Grid please wait ...")
-        evimat = grideval(alpharange, dmaxrange, q, Iq, sd, Nr, y, Wy, self.weighdata, self.data.smeared)
+        evimat = grideval(alpharange, dmaxrange, q, Iq, sd, Nr, y, Wy, \
+            self.weighdata, self.data.smeared)
         self.statusbar.showMessage("Grid done. Ready.")
 
         evidisp = exp(evimat - evimat.max())
@@ -491,7 +499,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.biftguess = [log(alpharange[maxrow]), dmaxrange[maxcol]]
 
         self.biftgridView.canvas.ax.cla()
-        self.biftgridView.canvas.ax.contour(dmaxrange,log(alpharange),evidisp)
+        self.biftgridView.canvas.ax.contourf(dmaxrange,log(alpharange),evidisp,cmap='viridis')
         self.biftgridView.canvas.ax.set_xlabel("Dmax")
         self.biftgridView.canvas.ax.set_ylabel("log(alpha)")
         self.biftgridView.canvas.draw()

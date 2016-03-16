@@ -1,7 +1,7 @@
 from trans_smear import transc
 from numpy import dot, vdot, array, log, where, exp, dot, outer, \
                 pi, sin, linspace, eye, diag, ones, zeros, sqrt, abs, \
-                vstack, hstack, repeat, arange, append
+                vstack, hstack, repeat, arange, append, diff, newaxis
 from numpy.linalg import inv, slogdet, norm
 from sys import stdout
 from scipy.optimize import minimize, nnls
@@ -14,7 +14,10 @@ from scipy.optimize import minimize, nnls
 
 # 07-20-2014 - the python routine in this module is used only for testing/debugging algorithm
 #              the final algorithm is implemented in "IFTREG" module written in fortran
-
+# 09-10-2014 - Learned that you can actually group both the transformation and
+#              regularization matrices in one and solve the regularized problem
+#              plus a non-negative constraint by using Lawson & Hanson's NNLS.
+#              Implemented via scipy.optimize.nnls
 
 # internal use functions :
 def fitline(x,y,w):
@@ -137,11 +140,11 @@ class saxsdata:
 
         if self.solved:
             fout = open("%s_gnom.out" % savefilename,'wt')
-            if (len(self.r_final)>1 and len(self.pr_final)>1):
-                q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r_final,self.pr_final,self.pr_error
+            if (len(self.r)>1 and len(self.pr)>1):
+                q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
             else:
                 q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
-            if (len(pr_error)==1):
+            if (pr_error==0):
                 pr_error = zeros(len(self.r))
             q  = q[qi:qf]
             Iq = Iq[qi:qf]
@@ -290,19 +293,17 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
     Nq = len(Iq)
     
     # prepare q_full for extrapolation to zero angle
-    dq = q[1]-q[0]
+    dq      = diff(q).mean() # get average spacing 
     q_extra = arange(0,q.min(),dq)
     q_full  = append(q_extra, q)
-
-    if weightdata:
-        sdnorm = 1./sd**2
-        sdnorm = (sdnorm/sdnorm.sum()) * float(len(sdnorm))
-        sdnorm = sdnorm.reshape(sdnorm.size,1)
-    else:
-        sdnorm = ones((Nq,1))
-
-    r = linspace(0,Dmax,Nr)
-
+    r       = linspace(0,Dmax,Nr)
+    sd_sq   = sd**2
+    # sdnorm  = Nq * sd/sd.sum() 
+    sdnorm  = 1/sd_sq
+    sdnorm  = Nq * sdnorm/sdnorm.sum()
+    sdmat   = diag(sdnorm)
+    # compute transformation matrix, uses FORTRAN module
+    # if smeared to speed up calculations
     if smeared:
         K = transc(q,r,y,Wy)
         Kunsmeared = trans(q,r)
@@ -314,16 +315,25 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
         Kfull = trans(q_full,r)
         Kfull_unsmeared = Kfull
 
-    Kweighted = repeat(sdnorm,K.shape[1],axis=1) * K
-
     # construct matrix L and Z
+    # matrix L is the finite-difference 2nd derivative approximation
+    # matrix Z is the penalty matrix for having non-zero P(0) & P(Dmax)
     L = -0.5*eye(Nr,k=-1) + eye(Nr,k=0) - 0.5*eye(Nr,k=1)
     Z = zeros((Nr,Nr))
-    Z[0,0] = 1.0
+    Z[0,0]   = 1.0
     Z[-1,-1] = 1.0
 
-    C = vstack([Kweighted, alpha*L, 10.*alpha*Z])
-    X = hstack([Iq*sdnorm[:,0], zeros(Nr), zeros(Nr)])
+    if weightdata:
+        Iq_obs = Iq.dot(sdmat) # normalize data by sigma
+        sdcol  = sdnorm[:,newaxis]
+        # normalize transformation matrix along M-dimension by sigma
+        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z]) 
+    else:
+        C = vstack([K, alpha*L, 10.*alpha*Z])
+        Iq_obs = Iq
+
+    # Use NNLS to solve P(r)
+    X = hstack([Iq_obs, zeros(Nr), zeros(Nr)])
 
     sol,resnorm = nnls(C,X)
     pr = sol
@@ -334,16 +344,22 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
     ireg_extrap = Kfull_unsmeared.dot(sol)
 
     if weightdata:
-        chisq = ((Iq-jreg)**2 / sd**2).mean()
+        chisq = ((Iq-jreg)**2 / sd_sq).mean()
+        B     = (K.T).dot(K/sdcol) # hessian of Chi^2/2
     else:
-        chisq = 1.0
-        
-    S0 = sum(-L.dot(sol)**2)
-    U  = L + (K.T).dot(K)/alpha
+        chisq = ((Iq-jreg)**2).sum() / (Nq-1)
+        B     = (K.T).dot(K)
 
+    S0 = sum(-L.dot(sol)**2)
+    # L is the hessian of S0
+    U  = L + B/alpha 
     detsign,rlogdet = slogdet(U)
-    rnorm = 0.5*(Nr*log(0.5)) + log(float(Nr+1))
-    evidence = rnorm + (alpha*S0 - 0.5*chisq*Nq) - 0.5*rlogdet
+    logdetA         = Nr*log(0.5) + log(Nr+1)
+    alpha_prior     = 1/alpha
+    Q               = alpha * S0 - 0.5*chisq*Nq
+    # compute evidence or Posterior probability (Likelihood * Prior)
+    # this score is in log space, so need to transform back when looking at distributiona
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha_prior)
 
     print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
 
@@ -353,43 +369,57 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
     # third version of IFT in python, takes in two pre-calculated 
     # transformation matrices to speed up grid calculation
     # if unsmeared, do K=Ksmeared
-    Nq = len(Iq)
-    # r = linspace(0,Dmax,Nr)
-    r = linspace(0,Dmax,Nr)
-    # check if calculation is error-weighted
-    # if no weight, multiply by diagonal of ones
-    if weightdata:
-        sdnorm = 1./sd**2
-        sdnorm = (sdnorm/sdnorm.sum()) * float(len(sdnorm))
-        sdnorm = sdnorm.reshape(sdnorm.size,1)
-    else:
-        sdnorm = ones((Nq,1))
-
-    Kweighted = repeat(sdnorm,K.shape[1],axis=1) * K
-
+    Nq = len(Iq)    
+    # prepare q_full for extrapolation to zero angle
+    dq      = diff(q).mean() # get average spacing 
+    q_extra = arange(0,q.min(),dq)
+    q_full  = append(q_extra, q)
+    r       = linspace(0,Dmax,Nr)
+    sd_sq   = sd**2
+    # sdnorm  = Nq * sd/sd.sum() 
+    sdnorm  = 1/sd_sq
+    sdnorm  = Nq * sdnorm/sdnorm.sum()
+    sdmat   = diag(sdnorm)
     # construct matrix L and Z
+    # matrix L is the finite-difference 2nd derivative approximation
+    # matrix Z is the penalty matrix for having non-zero P(0) & P(Dmax)
     L = -0.5*eye(Nr,k=-1) + eye(Nr,k=0) - 0.5*eye(Nr,k=1)
     Z = zeros((Nr,Nr))
-    Z[0,0] = 1.0
+    Z[0,0]   = 1.0
     Z[-1,-1] = 1.0
 
-    C = vstack([Kweighted, alpha*L, 10.*alpha*Z])
-    X = hstack([Iq*sdnorm[:,0], zeros(Nr), zeros(Nr)])
+    if weightdata:
+        Iq_obs = Iq.dot(sdmat) # normalize data by sigma
+        sdcol  = sdnorm[:,newaxis]
+        # normalize transformation matrix along M-dimension by sigma
+        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z]) 
+    else:
+        C = vstack([K, alpha*L, 10.*alpha*Z])
+        Iq_obs = Iq
 
+    # Use NNLS to solve P(r)
+    X = hstack([Iq_obs, zeros(Nr), zeros(Nr)])
     sol,resnorm = nnls(C,X)
     pr = sol
     
     jreg = K.dot(sol)
     ireg = Kunsmeared.dot(sol)
-    chisq = ((Iq-jreg)**2 / sd**2).mean()
 
-    # Do calculation according to Hansen (Bayesian IFT)
+    if weightdata:
+        chisq = ((Iq-jreg)**2 / sd_sq).mean()
+        B     = (K.T).dot(K/sdcol) # hessian of Chi^2/2
+    else:
+        chisq = ((Iq-jreg)**2).sum() / (Nq-1)
+        B     = (K.T).dot(K)
+
     S0 = sum(-L.dot(sol)**2)
-    U  = L + (K.T).dot(K)/alpha
-
+    # L is the hessian of S0
+    U  = L + B/alpha 
     detsign,rlogdet = slogdet(U)
-    rnorm = 0.5*(Nr*log(0.5)) + log(float(Nr+1))
-    evidence = rnorm + (alpha*S0 - 0.5*chisq*Nq) - 0.5*rlogdet
+    logdetA         = Nr*log(0.5) + log(Nr+1)
+    alpha_prior     = 1/alpha
+    Q               = alpha * S0 - 0.5*chisq*Nq
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha_prior)
 
     print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
 

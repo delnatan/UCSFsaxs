@@ -2,6 +2,9 @@
 subroutine transc(q,r,y,Wy,Nq,Nr,Ny,A)
     ! smearing correction taken into account 
     ! beam parameters are y and Wy
+    ! keep in mind that beam is assumed to be normalized so that its
+    ! integral goes to 0.5, hence the factor of two in the last step
+    ! to take into account beam symmetry
     real(8), parameter :: pi = acos(-1.0)
 
     integer :: Nq,Nr,Ny,i,j,k
@@ -25,7 +28,7 @@ subroutine transc(q,r,y,Wy,Nq,Nr,Ny,A)
                     aij = aij + Wy(k) * sin(qy)/qy * dy
                 end if
             end do
-            A(i,j) = 4.0*pi*2.0*aij*dr
+            A(i,j) = 4.0*pi*2.0*aij*dr ! times 2 due to beam symmetry
         end do
     end do
 
