@@ -65,7 +65,7 @@ class saxsdata:
         elif ext=="the": # for theoretical calculations
             self.q  = array([float(d.split()[0]) for d in raw if len(d.split())>1])
             self.Iq = array([float(d.split()[1]) for d in raw if len(d.split())>1])
-            self.sd = self.q * 0.0 + 1.0
+            self.sd = self.q * 0.0 + 0.001*self.Iq.max()
         else:
             print "Data format {0} is not yet supported.".format(ext)
 
