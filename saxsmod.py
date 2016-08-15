@@ -41,8 +41,8 @@ class saxsdata:
 	# for reading in FoXS-generated curves
         raw = [d for d in raw if not d.startswith("#")] # skip comment lines
         ext = filename[-3:].lower()
-        
-	raw = [d for d in raw if not d.startswith("#")] # get rid of comment lines        
+
+	raw = [d for d in raw if not d.startswith("#")] # get rid of comment lines
         if ext=="dat":
             try: #default format for reading data (used in beamlines, standard 3-column)
                 self.q  = array([float(d.split()[0]) for d in raw if len(d.split())>1])
@@ -75,8 +75,8 @@ class saxsdata:
             beamfn = args[0]
             beam = beamprofile(beamfn)
 
-        # common properties of SAXS data    
-        self.I0 = 0 # Real Space 
+        # common properties of SAXS data
+        self.I0 = 0 # Real Space
         self.Rg = 0 # Real Space
         self.r = 0
         self.pr = 0
@@ -106,7 +106,7 @@ class saxsdata:
         Rg = sqrt(-3.0 * m)
         lower_qRg = q[qi]*Rg
         upper_qRg = q[qf]*Rg
-        
+
         self.guinierRg = Rg
         self.guinierI0 = exp(b)
         self.guinierpts= [lower_qRg,upper_qRg]
@@ -129,7 +129,7 @@ class saxsdata:
 
         qmax = self.q.max()
         if qmax<1.0: # then unit is in angstroms
-            print "Unit is in angstroms.." 
+            print "Unit is in angstroms.."
         elif qmax>1.0:
             print "Unit is in nanometers .. multiplying by 0.1"
             self.q = 0.1*self.q
@@ -155,7 +155,7 @@ class saxsdata:
 
             gheader = """
            ####    G N O M   ---   Version 4.6                       ####\n
-   *******    Input file(s) : 
+   *******    Input file(s) :
 
   Angular   range    :     from {0:9.4f} to {1:9.4f}
   Real space range   :     from {2:9.2f} to {3:9.2f}\n
@@ -172,7 +172,7 @@ class saxsdata:
                             q_full[i],Iq[i-Nq_add],sd[i-Nq_add],Jreg[i-Nq_add],Ireg[i]))
 
             prheader = """
-           Distance distribution  function of particle  
+           Distance distribution  function of particle
 
 
        R          P(R)      ERROR\n\n"""
@@ -188,7 +188,7 @@ class saxsdata:
             fout.write(footer.format(self.guinierRg,self.guinierI0,self.Rg,0,self.Jreg[0],0))
 
             fout.close()
-        else:   
+        else:
             print "No solutions to be saved ... please solve the P(r) first.."
 
     def save_results(self, filename):
@@ -257,7 +257,7 @@ def trans(q, r, **kwargs):
     qr = outer(q,r)
     # sin(x)/x, when x=0, should be 1
     qr[qr<1.e-15] = 1.e-15
-    A = 4*pi* sin(qr)/qr * dr   
+    A = 4*pi* sin(qr)/qr * dr
 
     if smear:
     	# now this uses my fortran module 'transc' from 'trans_smear.f90'
@@ -273,9 +273,9 @@ def trans(q, r, **kwargs):
     return A
 
 def spherepr(Nr, Dmax):
-    # The integrated chord function of a sphere is 
+    # The integrated chord function of a sphere is
     # Dmax**3/24 (V)
-    # Since I(0) = 4*pi*V, we scale our P(r) so that the integral is 
+    # Since I(0) = 4*pi*V, we scale our P(r) so that the integral is
     # equal to I(0)
     #V = (Iq0/(4*pi))*(24.0/Dmax**3)
     r = linspace(0,Dmax,Nr)
@@ -288,19 +288,19 @@ def spherepr(Nr, Dmax):
 
 
 def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
-    # calculates IFT solution and returns the complete set of solutions 
+    # calculates IFT solution and returns the complete set of solutions
     # including extrapolation to zero angle
     Nq = len(Iq)
-    
+
     # prepare q_full for extrapolation to zero angle
-    dq      = diff(q).mean() # get average spacing 
+    dq      = diff(q).mean() # get average spacing
     q_extra = arange(0,q.min(),dq)
     q_full  = append(q_extra, q)
     r       = linspace(0,Dmax,Nr)
     sd_sq   = sd**2
-    # sdnorm  = Nq * sd/sd.sum() 
+    # Normalize variance / data weights
     sdnorm  = 1/sd_sq
-    sdnorm  = Nq * sdnorm/sdnorm.sum()
+    sdnorm  = Nq * sdnorm/sdnorm.sum() # scale so it doesnt spread the eigenvalues
     sdmat   = diag(sdnorm)
     # compute transformation matrix, uses FORTRAN module
     # if smeared to speed up calculations
@@ -319,6 +319,7 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
     # matrix L is the finite-difference 2nd derivative approximation
     # matrix Z is the penalty matrix for having non-zero P(0) & P(Dmax)
     L = -0.5*eye(Nr,k=-1) + eye(Nr,k=0) - 0.5*eye(Nr,k=1)
+    # L = -1 * eye(Nr,k=0) + eye(Nr,k=1)
     Z = zeros((Nr,Nr))
     Z[0,0]   = 1.0
     Z[-1,-1] = 1.0
@@ -327,7 +328,7 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
         Iq_obs = Iq.dot(sdmat) # normalize data by sigma
         sdcol  = sdnorm[:,newaxis]
         # normalize transformation matrix along M-dimension by sigma
-        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z]) 
+        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z])
     else:
         C = vstack([K, alpha*L, 10.*alpha*Z])
         Iq_obs = Iq
@@ -337,7 +338,7 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
 
     sol,resnorm = nnls(C,X)
     pr = sol
-    
+
     jreg = K.dot(sol)
     ireg = Kunsmeared.dot(sol)
     jreg_extrap = Kfull.dot(sol)
@@ -352,32 +353,32 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
 
     S0 = sum(-L.dot(sol)**2)
     # L is the hessian of S0
-    U  = L + B/alpha 
+    U  = L + B/alpha
     detsign,rlogdet = slogdet(U)
     logdetA         = Nr*log(0.5) + log(Nr+1)
-    alpha_prior     = 1/alpha
     Q               = alpha * S0 - 0.5*chisq*Nq
     # compute evidence or Posterior probability (Likelihood * Prior)
-    # this score is in log space, so need to transform back when looking at distributiona
-    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha_prior)
+    # this score is in log space, so need to transform back when looking at distribution
+    # prior for alpha is 1/alpha, or in log(1/alpha) -> -log(alpha)
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
 
     print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
 
     return jreg, ireg, jreg_extrap, ireg_extrap, q_full, r, pr, evidence
 
 def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
-    # third version of IFT in python, takes in two pre-calculated 
+    # third version of IFT in python, takes in two pre-calculated
     # transformation matrices to speed up grid calculation
     # if unsmeared, do K=Ksmeared
-    Nq = len(Iq)    
+    Nq = len(Iq)
     # prepare q_full for extrapolation to zero angle
-    dq      = diff(q).mean() # get average spacing 
+    dq      = diff(q).mean() # get average spacing
     q_extra = arange(0,q.min(),dq)
     q_full  = append(q_extra, q)
     r       = linspace(0,Dmax,Nr)
     sd_sq   = sd**2
-    # sdnorm  = Nq * sd/sd.sum() 
     sdnorm  = 1/sd_sq
+    # scale noise so it doesn't stretch the eigenvalues
     sdnorm  = Nq * sdnorm/sdnorm.sum()
     sdmat   = diag(sdnorm)
     # construct matrix L and Z
@@ -392,7 +393,7 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
         Iq_obs = Iq.dot(sdmat) # normalize data by sigma
         sdcol  = sdnorm[:,newaxis]
         # normalize transformation matrix along M-dimension by sigma
-        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z]) 
+        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z])
     else:
         C = vstack([K, alpha*L, 10.*alpha*Z])
         Iq_obs = Iq
@@ -401,7 +402,7 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
     X = hstack([Iq_obs, zeros(Nr), zeros(Nr)])
     sol,resnorm = nnls(C,X)
     pr = sol
-    
+
     jreg = K.dot(sol)
     ireg = Kunsmeared.dot(sol)
 
@@ -414,12 +415,13 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
 
     S0 = sum(-L.dot(sol)**2)
     # L is the hessian of S0
-    U  = L + B/alpha 
+    U  = L + B/alpha
     detsign,rlogdet = slogdet(U)
     logdetA         = Nr*log(0.5) + log(Nr+1)
-    alpha_prior     = 1/alpha
+    # use Jeffrey's prior for alpha
+    # log(1/alpha) -> -log(alpha)
     Q               = alpha * S0 - 0.5*chisq*Nq
-    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha_prior)
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
 
     print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
 
