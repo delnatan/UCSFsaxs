@@ -6,8 +6,19 @@
 #              this was done by sub-classing ErrorBarItem (see below)
 # 07/15/2014 - took out automatic Guinier analysis, code is buggy and needs to be fixed
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+try:
+    from PyQt4.QtCore import *
+    from PyQt4.QtGui import *
+except ImportError:
+    try:
+        print("PyQt4 not found. Using PyQt5.")
+        from PyQt5.QtCore import *
+        from PyQt5.QtWidgets import *
+        from PyQt5.QtGui import *
+
+    except ImportError:
+        raise Exception("PyQt5 not found. Please install either PyQt4 or PyQt5.")
+
 import sys
 import os
 import time
@@ -20,6 +31,8 @@ from numpy import exp, log, log10, array, loadtxt, linspace, zeros,\
 from numpy.random import randn
 from scipy.optimize import minimize
 from autorg_de import autorg
+
+PYQTVERSION = int(QT_VERSION_STR[0])
 
 class TextItem(pg.TextItem):
 
@@ -113,19 +126,35 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.actionOpen.setShortcut(QKeySequence.Open)
         self.actionClose.setShortcut(QKeySequence.Quit)
 
-        self.mainWindow.connect(self.actionOpen, SIGNAL("triggered()"), self.openfile)
-        self.mainWindow.connect(self.checkLogY, SIGNAL("stateChanged(int)"), self.axisupdate)
-        self.mainWindow.connect(self.checkLogX, SIGNAL("stateChanged(int)"), self.axisupdate)
-        self.mainWindow.connect(self.actionLoad_Beam_Profile, SIGNAL("triggered()"),self.openbeamfile)
-        self.mainWindow.connect(self.solvepr_button, SIGNAL("clicked()"),self.runift)
-        self.mainWindow.connect(self.calcbiftgrid, SIGNAL("clicked()"),self.biftgrideval)
-        self.mainWindow.connect(self.refinebift, SIGNAL("clicked()"),self.biftsimplex)
-        self.mainWindow.connect(self.runprimaryanalysis, SIGNAL("clicked()"),self.manualGuinier)
-        self.mainWindow.connect(self.nskip_spinbox, SIGNAL("valueChanged(int)"),self.adjustrange)
-        self.mainWindow.connect(self.nskip2_spinbox, SIGNAL("valueChanged(int)"),self.adjustrange)
-        self.mainWindow.connect(self.actionClose, SIGNAL("triggered()"), self.mainWindow.close)
-        self.mainWindow.connect(self.actionSave_as_GNOM_file, SIGNAL("triggered()"),self.saveGNOMfile)
-        self.mainWindow.connect(self.autoguinier_button, SIGNAL("clicked()"),self.autoGuinier)
+        if PYQTVERSION==4:
+            self.mainWindow.connect(self.actionOpen, SIGNAL("triggered()"), self.openfile)
+            self.mainWindow.connect(self.checkLogY, SIGNAL("stateChanged(int)"), self.axisupdate)
+            self.mainWindow.connect(self.checkLogX, SIGNAL("stateChanged(int)"), self.axisupdate)
+            self.mainWindow.connect(self.actionLoad_Beam_Profile, SIGNAL("triggered()"),self.openbeamfile)
+            self.mainWindow.connect(self.solvepr_button, SIGNAL("clicked()"),self.runift)
+            self.mainWindow.connect(self.calcbiftgrid, SIGNAL("clicked()"),self.biftgrideval)
+            self.mainWindow.connect(self.refinebift, SIGNAL("clicked()"),self.biftsimplex)
+            self.mainWindow.connect(self.runprimaryanalysis, SIGNAL("clicked()"),self.manualGuinier)
+            self.mainWindow.connect(self.nskip_spinbox, SIGNAL("valueChanged(int)"),self.adjustrange)
+            self.mainWindow.connect(self.nskip2_spinbox, SIGNAL("valueChanged(int)"),self.adjustrange)
+            self.mainWindow.connect(self.actionClose, SIGNAL("triggered()"), self.mainWindow.close)
+            self.mainWindow.connect(self.actionSave_as_GNOM_file, SIGNAL("triggered()"),self.saveGNOMfile)
+            self.mainWindow.connect(self.autoguinier_button, SIGNAL("clicked()"),self.autoGuinier)
+        elif PYQTVERSION==5:
+            # updated PyQt5 signal connections
+            self.actionOpen.triggered.connect(self.openfile)
+            self.checkLogY.stateChanged.connect(self.axisupdate)
+            self.checkLogX.stateChanged.connect(self.axisupdate)
+            self.actionLoad_Beam_Profile.triggered.connect(self.openbeamfile)
+            self.solvepr_button.clicked.connect(self.runift)
+            self.calcbiftgrid.clicked.connect(self.biftgrideval)
+            self.refinebift.clicked.connect(self.biftsimplex)
+            self.runprimaryanalysis.clicked.connect(self.manualGuinier)
+            self.nskip_spinbox.valueChanged.connect(self.adjustrange)
+            self.nskip2_spinbox.valueChanged.connect(self.adjustrange)
+            self.actionClose.triggered.connect(self.mainWindow.close)
+            self.actionSave_as_GNOM_file.triggered.connect(self.saveGNOMfile)
+            self.autoguinier_button.clicked.connect(self.autoGuinier)
 
     def initializeparams(self):
         self.filename = None
@@ -194,13 +223,21 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         else:
             cwd = os.path.expanduser('~')
 
-        formats = (["*.{0}".format(unicode(formats).lower())\
+        formats = (["*.{0}".format(formats.lower())\
                 for formats in self.supportedFormats])
-        fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
-                                                    "Open raw SAXS data ...",\
-                                                    cwd,
-                                                    "SAXS Data ({0})".\
-                                                    format(" ".join(formats))))
+
+        if PYQTVERSION==4:
+            fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
+                                                        "Open raw SAXS data ...",\
+                                                        cwd,\
+                                                        "SAXS Data ({0})".\
+                                                        format(" ".join(formats))))
+        elif PYQTVERSION==5:
+            fname,_=QFileDialog.getOpenFileName(self.mainWindow,\
+                                                        "Open raw SAXS data ...",\
+                                                        cwd,\
+                                                        "SAXS Data ({0})".\
+                                                        format(" ".join(formats)))
         if fname:
             self.filename = fname
             self.loadfile(fname)
@@ -213,11 +250,20 @@ class saxsgui_mainwindow(Ui_SAXSgui):
                     if self.beamname is not None else self.cwd)
         formats = (["*.{0}".format(unicode(formats).lower())\
                 for formats in self.supportedFormats])
-        fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
-                                                    "Open Beam Profile ...",\
-                                                    cwd,
-                                                    "Beam Profile ({0})".\
-                                                    format(" ".join(formats))))
+
+        if PYQTVERSION==4:
+            fname = unicode(QFileDialog.getOpenFileName(self.mainWindow,\
+                                                        "Open Beam Profile ...",\
+                                                        cwd,\
+                                                        "Beam Profile ({0})".\
+                                                        format(" ".join(formats))))
+        elif PYQTVERSION==5:
+            fname,_ = QFileDialog.getOpenFileName(self.mainWindow,\
+                                            "Open Beam Profile ...",\
+                                            cwd,\
+                                            "Beam Profile ({0})".\
+                                            format(" ".join(formats)))
+
         if fname:
             self.beamname = fname
             beam_fname = fname.split('/')[-1]
