@@ -38,11 +38,10 @@ class saxsdata:
         self.filename = filename
         dat = open(filename,"rt")
         raw = dat.readlines()
-	# for reading in FoXS-generated curves
+    # for reading in FoXS-generated curves
         raw = [d for d in raw if not d.startswith("#")] # skip comment lines
         ext = filename[-3:].lower()
 
-	raw = [d for d in raw if not d.startswith("#")] # get rid of comment lines
         if ext=="dat":
             try: #default format for reading data (used in beamlines, standard 3-column)
                 self.q  = array([float(d.split()[0]) for d in raw if len(d.split())>1])
@@ -67,7 +66,7 @@ class saxsdata:
             self.Iq = array([float(d.split()[1]) for d in raw if len(d.split())>1])
             self.sd = self.q * 0.0 + 0.001*self.Iq.max()
         else:
-            print "Data format {0} is not yet supported.".format(ext)
+            print("Data format {0} is not yet supported.".format(ext))
 
         self.check_and_convert_q_units()
 
@@ -129,9 +128,9 @@ class saxsdata:
 
         qmax = self.q.max()
         if qmax<1.0: # then unit is in angstroms
-            print "Unit is in angstroms.."
+            print("Unit is in angstroms..")
         elif qmax>1.0:
-            print "Unit is in nanometers .. multiplying by 0.1"
+            print("Unit is in nanometers .. multiplying by 0.1")
             self.q = 0.1*self.q
 
     def writeGNOM(self, savefilename):
@@ -189,17 +188,17 @@ class saxsdata:
 
             fout.close()
         else:
-            print "No solutions to be saved ... please solve the P(r) first.."
+            print("No solutions to be saved ... please solve the P(r) first..")
 
     def save_results(self, filename):
-    	# things needed to save
-    	# r,pr is final P(r) solution
-    	# q,Iq,sd is experimental data (uncut), with data range (index used) for analysis in qi,qf
-    	q,Iq,sd,r,pr = self.q,self.Iq,self.sd,self.r,self.pr
-    	qi, qf = self.datarange
-    	Jreg,Ireg = self.Jreg, self.Ireg
+        # things needed to save
+        # r,pr is final P(r) solution
+        # q,Iq,sd is experimental data (uncut), with data range (index used) for analysis in qi,qf
+        q,Iq,sd,r,pr = self.q,self.Iq,self.sd,self.r,self.pr
+        qi, qf = self.datarange
+        Jreg,Ireg = self.Jreg, self.Ireg
 
-    	return False
+        return False
 
 class beamprofile:
 
@@ -222,12 +221,12 @@ class beamprofile:
             self.dy = self.y[1] - self.y[0]
             self.normalize()
         else:
-            print "Beam profile data: {0} is not recognized.".format(ext)
+            print("Beam profile data: {0} is not recognized.".format(ext))
 
     def check_and_convert_q_units(self):
         ymax = self.y.max()
         if ymax>1.0:
-            print "Beam profile unit is in nanometers .. multiplying by 0.1"
+            print("Beam profile unit is in nanometers .. multiplying by 0.1")
             self.y = 0.1*self.y
 
     def normalize(self):
@@ -247,7 +246,7 @@ def trans(q, r, **kwargs):
             Wy = kwargs['Wy']
             dy = y[1]-y[0]
         except NameError:
-            print "Please specify beam parameteres y and Wy"
+            print("Please specify beam parameteres y and Wy")
             raise
     else:
         smear = False
@@ -260,7 +259,7 @@ def trans(q, r, **kwargs):
     A = 4*pi* sin(qr)/qr * dr
 
     if smear:
-    	# now this uses my fortran module 'transc' from 'trans_smear.f90'
+        # now this uses my fortran module 'transc' from 'trans_smear.f90'
         A = transc(q,r,y,Wy)
         # At = zeros((Nq,Nr))
         # for i in range(Nq):
@@ -362,7 +361,7 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
     # prior for alpha is 1/alpha, or in log(1/alpha) -> -log(alpha)
     evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
 
-    print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
+    print("Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence))
 
     return jreg, ireg, jreg_extrap, ireg_extrap, q_full, r, pr, evidence
 
@@ -423,7 +422,7 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
     Q               = alpha * S0 - 0.5*chisq*Nq
     evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
 
-    print "Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence)
+    print("Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence))
 
     return jreg, ireg, r, pr, evidence
 

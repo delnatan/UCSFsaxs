@@ -499,7 +499,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 
             fhd_out.close()
 
-            print "saved to {0}".format(fn_out)
+            print("saved to {0}".format(fn_out))
 
     def biftgrideval(self):
         Nalpha = int(self.Nalpha.text())
