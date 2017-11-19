@@ -248,7 +248,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         else:
             cwd = (os.path.dirname(self.beamname)\
                     if self.beamname is not None else self.cwd)
-        formats = (["*.{0}".format(unicode(formats).lower())\
+        formats = (["*.{0}".format(formats.lower())\
                 for formats in self.supportedFormats])
 
         if PYQTVERSION==4:
@@ -280,9 +280,15 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         cwd = (os.path.dirname(self.filename)\
                 if self.filename is not None else self.cwd)
 
-        fname = unicode(QFileDialog.getSaveFileName(self.mainWindow,\
-                                                    "Save as GNOM file ...",\
-                                                    cwd))
+        if PYQTVERSION==4:
+            fname = QFileDialog.getSaveFileName(self.mainWindow,\
+                                            "Save as GNOM file ...",\
+                                            cwd)
+        elif PYQTVERSION==5:
+            fname,_ = QFileDialog.getSaveFileName(self.mainWindow,\
+                                            "Save as GNOM file ...",\
+                                            cwd)
+
         self.data.writeGNOM(fname)
 
     def loadfile(self,filename):

@@ -138,6 +138,7 @@ class saxsdata:
         qf = self.datarange[1]
 
         if self.solved:
+            # get only relevant filename
             fout = open("%s_gnom.out" % savefilename,'wt')
             if (len(self.r)>1 and len(self.pr)>1):
                 q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
