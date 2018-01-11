@@ -122,6 +122,7 @@ class saxsdata:
         y = (self.q[qmin_id:qmax_id] * self.guinierRg)**2 * self.Iq[qmin_id:qmax_id]/self.guinierI0
         x = (self.q[qmin_id:qmax_id] * self.guinierRg)
         self.y_kratky = y
+        self.yerr_kratky = (x**2) * self.sd[qmin_id:qmax_id] / self.guinierI0
         self.x_kratky = x
 
     def check_and_convert_q_units(self):
@@ -144,7 +145,7 @@ class saxsdata:
                 q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
             else:
                 q,Iq,sd,r,pr,pr_error = self.q,self.Iq,self.sd,self.r,self.pr,self.pr_error
-            if (pr_error==0):
+            if (sum(pr_error)==0):
                 pr_error = zeros(len(self.r))
             q  = q[qi:qf]
             Iq = Iq[qi:qf]
@@ -323,14 +324,14 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
     Z = zeros((Nr,Nr))
     Z[0,0]   = 1.0
     Z[-1,-1] = 1.0
-
+    sqrtalpha = sqrt(alpha)
     if weightdata:
         Iq_obs = Iq.dot(sdmat) # normalize data by sigma
         sdcol  = sdnorm[:,newaxis]
         # normalize transformation matrix along M-dimension by sigma
-        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z])
+        C = vstack([K*sdcol, sqrtalpha*L, 10.*sqrtalpha*Z])
     else:
-        C = vstack([K, alpha*L, 10.*alpha*Z])
+        C = vstack([K, sqrtalpha*L, 10.*sqrtalpha*Z])
         Iq_obs = Iq
 
     # Use NNLS to solve P(r)
@@ -353,14 +354,14 @@ def iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,weightdata,smeared):
 
     S0 = sum(-L.dot(sol)**2)
     # L is the hessian of S0
-    U  = L + B/alpha
+    U  = L.T @ L + B/alpha
     detsign,rlogdet = slogdet(U)
     logdetA         = Nr*log(0.5) + log(Nr+1)
     Q               = alpha * S0 - 0.5*chisq*Nq
     # compute evidence or Posterior probability (Likelihood * Prior)
     # this score is in log space, so need to transform back when looking at distribution
     # prior for alpha is 1/alpha, or in log(1/alpha) -> -log(alpha)
-    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha) - log(Dmax)
 
     print("Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence))
 
@@ -388,14 +389,14 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
     Z = zeros((Nr,Nr))
     Z[0,0]   = 1.0
     Z[-1,-1] = 1.0
-
+    sqrtalpha = sqrt(alpha)
     if weightdata:
         Iq_obs = Iq.dot(sdmat) # normalize data by sigma
         sdcol  = sdnorm[:,newaxis]
         # normalize transformation matrix along M-dimension by sigma
-        C = vstack([K*sdcol, alpha*L, 10.*alpha*Z])
+        C = vstack([K*sdcol, sqrtalpha*L, 10.*sqrtalpha*Z])
     else:
-        C = vstack([K, alpha*L, 10.*alpha*Z])
+        C = vstack([K, sqrtalpha*L, 10.*sqrtalpha*Z])
         Iq_obs = Iq
 
     # Use NNLS to solve P(r)
@@ -415,13 +416,13 @@ def iftv3(K,Kunsmeared,alpha,Dmax,q,Iq,sd,Nr,weightdata,smeared):
 
     S0 = sum(-L.dot(sol)**2)
     # L is the hessian of S0
-    U  = L + B/alpha
+    U  = L.T @ L + B/alpha
     detsign,rlogdet = slogdet(U)
     logdetA         = Nr*log(0.5) + log(Nr+1)
     # use Jeffrey's prior for alpha
     # log(1/alpha) -> -log(alpha)
     Q               = alpha * S0 - 0.5*chisq*Nq
-    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha)
+    evidence        = 0.5*logdetA + Q - 0.5*rlogdet - log(alpha) - log(Dmax)
 
     print("Chisq: {0:10.4f}\tEvidence:{1:10.5E}".format(chisq,evidence))
 

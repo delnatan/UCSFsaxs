@@ -24,11 +24,11 @@ import os
 import time
 from saxsgui import Ui_SAXSgui
 import pyqtgraph as pg
-from saxsmod import saxsdata, beamprofile, fitline,iftv2,iftv3,grideval
+from saxsmod import saxsdata, beamprofile, fitline,iftv2,iftv3,grideval,trans
 from scipy.integrate import simps
 from numpy import exp, log, log10, array, loadtxt, linspace, zeros,\
                  unravel_index,pi, dot, sqrt, arange, sin, ceil, diff,append
-from numpy.random import randn
+from numpy.random import randn, normal
 from scipy.optimize import minimize
 from autorg_de import autorg
 
@@ -407,7 +407,26 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         Iq = Iq[qmin_id:qmax_id]
         sd = sd[qmin_id:qmax_id]
 
+        # solve once for extrapolation
         Jreg,Ireg, Jreg_extrap, Ireg_extrap, q_full, r,pr,evi = iftv2(alpha,Dmax,q,Iq,sd,Nr,y,Wy,self.weighdata,self.data.smeared)
+        
+        r = linspace(0.0,Dmax,Nr)
+        
+        # do resampling to estimate error in P(r)
+        Nerr = 100
+        Pr_list = zeros((Nerr,Nr))
+        # precompute smearing matrix
+        if self.data.smeared:
+            K = trans(q,r,y=y,Wy=Wy)
+            Kunsmeared = trans(q,r)
+        else:
+            K = trans(q,r)
+            Kunsmeared = K * 1.0
+
+        for n in range(Nerr):
+            wrkiq = normal(loc=Iq,scale=sd)
+            _,_,r,wrkpr,_ = iftv3(K,Kunsmeared,alpha,Dmax,q,wrkiq,sd,Nr,self.weighdata,self.data.smeared)
+            Pr_list[n,:] = wrkpr
 
         # assign full angular range to data
         self.data.q_full = q_full
@@ -415,7 +434,10 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         chi = ((Iq-Jreg)**2/sd**2).mean()
 
         # assign solution to saxsdata
-        self.data.r, self.data.pr = r, pr
+        pr, pr_error = Pr_list.mean(axis=0), Pr_list.std(axis=0)
+        self.data.r = r
+        self.data.pr = pr      
+        self.data.pr_error = pr_error
         self.data.Jreg = Jreg
         self.data.Ireg = Ireg
         self.data.solved = True
@@ -471,6 +493,9 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.rawplot.addItem(chi_textitem)
 
         self.prplot.addItem(realRg_textitem)
+        # add P(r) error bars
+        pr_errorbar = ErrorBarItem(x=r,y=pr,height=pr_error,beam=0,pen={'color':'#a9a9a9','width':2})
+        self.prplot.addItem(pr_errorbar)
         self.prplot.plot(r,pr,pen=self.redpen)
 
         # after solving, plot the unsmeared normalized kratky plot
@@ -478,14 +503,19 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         # y = (q*Rg)^2 * I(q)/I(0)
         xc_kratky = q_full * self.data.Rg 
         yc_kratky = (xc_kratky)**2 * Jreg_extrap/Jreg_extrap[0]
+
         # update the raw data with the Real Space Rg
         x_kratky = q * self.data.Rg
         y_kratky = (x_kratky)**2 * Iq/Jreg_extrap[0]
-
+        yerr_kratky = (x_kratky)**2 * sd/Jreg_extrap[0]
+        kratky_errorbar_corr = ErrorBarItem(x=x_kratky,y=y_kratky,height=yerr_kratky,\
+            beam=0,pen={'color':'#a9a9a9','width':2})
         self.kratkyplot.clear()
+        self.kratkyplot.addItem(kratky_errorbar_corr)
         self.kratkyplot.plot(x_kratky, y_kratky, pen=self.redpen)
         self.kratkyplot.setLabel('bottom','q x Rg')
         self.kratkyplot.setLabel('left','(q*Rg)<sup>2</sup> x I(q)/I(0)')
+
         self.kratkyplot.addLine(x=1.73,pen=self.graydashedpen)
         self.kratkyplot.plot(xc_kratky, yc_kratky, pen=self.blackpen)        
 
@@ -497,11 +527,12 @@ class saxsgui_mainwindow(Ui_SAXSgui):
             
             # integrate P(r) to 1
             dr = r[1]-r[0]
-            pr = pr/(pr.sum()*dr)
-
+            prscale = pr.sum() * dr
+            pr = pr/prscale
+            pr_error = pr_error/prscale
             fhd_out = open(fn_out,"wt")
             for n in range(Nr):
-                fhd_out.write("{0:5.2f} {1:6.2E}\n".format(r[n],pr[n]))
+                fhd_out.write("{0:5.2f} {1:6.4E} {2:6.4E}\n".format(r[n],pr[n],pr_error[n]))
 
             fhd_out.close()
 
@@ -555,6 +586,42 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.biftgridView.canvas.ax.set_xlabel("Dmax")
         self.biftgridView.canvas.ax.set_ylabel("log(alpha)")
         self.biftgridView.canvas.draw()
+
+        # temporary option to save "Evidence" grid data
+        if self.filename is not None:
+            cwd = os.path.dirname(self.filename)
+
+        # write file out
+        outfn = self.filename[:-4] + "_evigrid.txt"
+        outfn_dmax = self.filename[:-4] + "_marg_alpha.txt"
+        outfn_alpha = self.filename[:-4] + "_marg_dmax.txt"
+
+        fhdout = open(outfn,"wt")
+        fhdout.write("#Dmax\tlog(alpha)\tNormEvidence\n")
+        for i in range(Nalpha):
+            for j in range(Ndmax):
+                strout = "%0.2f\t%0.4f\t%0.5e\n" % (dmaxrange[j], log(alpharange[i]), evidisp[i,j])
+                fhdout.write(strout)
+        fhdout.close()
+
+        print("Wrote Posterior surface to %s." % (outfn))
+
+        with open(outfn_dmax,"wt") as f:
+            f.write("#Dmax\tNormEvidence\n")
+            wrkevi = evidisp.sum(axis=0)
+            logalphs = log(alpharange)
+            wrkevi = wrkevi/(wrkevi.sum() * (logalphs[1]-logalphs[0]))
+            # compute moments 
+            m1 = dmaxrange * wrkevi/(wrkevi.sum() * (dmaxrange[1]-dmaxrange[0]))
+            for j in range(Ndmax):
+                f.write("%0.2f\t%0.5e\n" % (dmaxrange[j], wrkevi[j]))
+
+        with open(outfn_alpha,"wt") as f:
+            f.write("#log(alpha)\tNormEvidence\n")
+            wrkevi = evidisp.sum(axis=1)
+            wrkevi = wrkevi/(wrkevi.sum() * (dmaxrange[1]-dmaxrange[0]))
+            for i in range(Nalpha):
+                f.write("%0.4f\t%0.5e\n" % (log(alpharange[i]), wrkevi[i]))        
 
     def biftsimplex(self):
         
@@ -627,6 +694,10 @@ class saxsgui_mainwindow(Ui_SAXSgui):
 
         self.data.kratky()
 
+        # kratky error bars
+        self.kratky_errorbar = ErrorBarItem(x=self.data.x_kratky, y=self.data.y_kratky,\
+            height=self.data.yerr_kratky,beam=0,pen={'color':'#a9a9a9','width':2})
+
         self.guinierplot.clear()
         self.kratkyplot.clear()
 
@@ -645,6 +716,7 @@ class saxsgui_mainwindow(Ui_SAXSgui):
         self.guinierplot.setYRange(fit_y.min()*0.9, fit_y.max()*1.1)
 
         self.guinierplot.plot(x=fit_x,y=fit_y,pen=self.blackpen)
+        self.kratkyplot.addItem(self.kratky_errorbar)
         self.kratkyplot.plot(self.data.x_kratky, self.data.y_kratky, pen=self.redpen)
         self.kratkyplot.setLabel('bottom','q x Rg')
         self.kratkyplot.setLabel('left','(q*Rg)<sup>2</sup> x I(q)/I(0)')
